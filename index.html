@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, orientation=landscape">
+    <title>webfirenetxplus2</title>
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --netflix-red: #FF6600; /* Naranja */
+            --netflix-black: #141414;
+            --netflix-dark: #000000;
+            --text-color: #FFFFFF;
+            --transition: all 0.1s ease-out;
+            --card-bg: #232323;
+            --neon-red: #00A8FF; /* Azul */
+            --neon-yellow: #00a8ff; 
+            --neon-glow: 0 0 12px rgba(0, 168, 255, 0.8), 0 0 25px rgba(255, 102, 0, 0.6);
+            --grey: #a3a3a3;
+            --watched-green: #46d369;
+        }
+
+        /* --- ESTILOS DEL VÍDEO INTRO --- */
+        #intro-screen {
+            position: fixed; inset: 0; background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999999; transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        .intro-image-logo { width: 300px; max-width: 80%; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255, 102, 0, 0.5)); animation: cinematicLogo 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .welcome-text { color: var(--text-color); font-size: 22px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 30px; text-shadow: var(--neon-glow); opacity: 0; animation: fadeInText 1s ease-out 1.2s forwards; }
+        .loading-container { width: 250px; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 10px; overflow: hidden; margin-bottom: 15px; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); opacity: 0; animation: fadeInText 0.5s ease-out 1.5s forwards; }
+        .loading-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--netflix-red), var(--neon-red)); border-radius: 10px; box-shadow: 0 0 10px var(--neon-red); animation: loadProgress 3.5s ease-in-out 1.8s forwards; }
+        .intro-text-animated { color: #ffffff; font-size: 13px; letter-spacing: 6px; text-transform: uppercase; opacity: 0; animation: fadeInText 1s ease-out 2.5s forwards; }
+
+        @keyframes cinematicLogo { 0% { transform: scale(0.6) translateY(20px); opacity: 0; filter: brightness(0.5) blur(10px); } 50% { transform: scale(1.05) translateY(0); opacity: 1; filter: brightness(1.2) blur(0px); } 100% { transform: scale(1) translateY(0); opacity: 1; filter: brightness(1) blur(0px); } }
+        @keyframes fadeInText { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes loadProgress { 0% { width: 0%; } 30% { width: 45%; } 70% { width: 80%; } 100% { width: 100%; } }
+
+        .help-tip { background: rgba(20, 20, 20, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-left: 3px solid var(--neon-red); color: #eee; padding: 10px 15px; font-size: 13px; border-radius: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); margin-bottom: 15px; backdrop-filter: blur(5px); line-height: 1.4; }
+        .help-tip i { color: var(--neon-yellow); font-size: 16px; min-width: 16px; text-align: center; }
+
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; outline: none !important; touch-action: auto; user-select: none; -webkit-user-select: none; }
+        body { margin: 0; padding: 0; background: url('https://novaplayer.simdif.com/images/public/sd_6a1b20667a85b.png?no_cache=1780169872') center center fixed; background-size: cover; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: var(--text-color); width: 100vw; height: 100vh; position: relative; }
+        .smarters-sidebar, .smarters-content, .synopsis-right-col, .search-results-container, .manual-scroll-container, .cms-list-container, .folder-manager-container { touch-action: pan-y !important; -webkit-overflow-scrolling: touch; }
+        .home-carousel { touch-action: pan-x !important; -webkit-overflow-scrolling: touch; }
+        .smarters-container { display: flex; width: 100vw; height: calc(100vh - 80px); padding: 15px; gap: 15px; }
+        .smarters-sidebar { width: 300px; min-width: 300px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255, 255, 255, 0.2); overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; border-radius: 8px; height: 100%; backdrop-filter: blur(10px); }
+        .smarters-content { flex: 1; overflow-y: auto; height: 100%; padding-right: 5px; }
+        
+        .smarters-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; padding-bottom: 30px; }
+        @media (max-width: 1300px) { .smarters-grid { grid-template-columns: repeat(5, 1fr); } }
+        @media (max-width: 1000px) { .smarters-grid { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 768px) { .smarters-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        /* Estilo Dinámico para Modo TV (Listado sin pósters) */
+        .smarters-grid.live-mode { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 1300px) { .smarters-grid.live-mode { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .smarters-grid.live-mode { grid-template-columns: 1fr; } }
+
+        .smarters-cat-btn { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; padding: 12px 15px; text-align: left; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: var(--transition); width: 100%; position: relative; }
+        .smarters-cat-btn .cat-info { display: flex; align-items: center; gap: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .smarters-cat-btn i { color: var(--netflix-red); font-size: 16px; min-width: 18px; }
+        /* Actualización Focus para D-PAD */
+        .smarters-cat-btn:focus, .smarters-cat-btn.active, .smarters-cat-btn:hover { background: var(--netflix-red); color: #fff; border-color: var(--neon-red); box-shadow: var(--neon-glow); transform: scale(1.02); }
+        .smarters-cat-btn:focus i, .smarters-cat-btn.active i, .smarters-cat-btn:hover i { color: #fff; }
+        .smarters-cat-btn:focus .cat-badge, .smarters-cat-btn.active .cat-badge, .smarters-cat-btn:hover .cat-badge { background: #fff; color: var(--netflix-red); border-color: #fff; }
+
+        .cat-badge { background: rgba(255, 102, 0, 0.2); color: var(--netflix-red); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; border: 1px solid var(--netflix-red); min-width: 30px; text-align: center; transition: var(--transition); }
+
+        /* Estilos de las tarjetas de contenido */
+        .content-card { background: var(--card-bg); border-radius: 8px; overflow: hidden; position: relative; cursor: pointer; transition: var(--transition); box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; aspect-ratio: 2/3; }
+        /* Actualización Focus para D-PAD */
+        .content-card:focus, .content-card:hover { transform: scale(1.05); box-shadow: var(--neon-glow); border: 1px solid var(--neon-red); z-index: 10; }
+        
+        /* Modificadores para Tarjeta de TV */
+        .content-card.live-card { aspect-ratio: auto; height: 60px; flex-direction: row; align-items: center; padding: 0 15px; border-left: 4px solid var(--netflix-red); background: rgba(35, 35, 35, 0.9); backdrop-filter: blur(5px); }
+        .content-card.live-card .content-title { position: static; background: none; border: none; font-size: 15px; padding: 0; backdrop-filter: none; white-space: nowrap; text-align: left; margin-left: 10px; }
+        
+        .content-img { width: 100%; height: 100%; object-fit: cover; background: #111; }
+        .content-title { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); padding: 10px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(5px); border-top: 1px solid rgba(255,255,255,0.1); }
+
+        /* --- ESTILOS DEL MODO EDITOR VISUAL --- */
+        .editor-controls { display: none; position: absolute; top: 5px; right: 5px; z-index: 20; gap: 5px; background: rgba(0,0,0,0.7); padding: 4px; border-radius: 6px; }
+        .editor-mode-active .editor-controls { display: flex; }
+        .editor-btn { background: #333; border: 1px solid var(--neon-yellow); color: #fff !important; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+        .editor-btn:hover { background: var(--neon-yellow); color: #000 !important; }
+        .editor-btn.delete { border-color: #ff4d4d; }
+        .editor-btn.delete:hover { background: #ff4d4d; color: #fff !important; }
+        .editor-mode-active .smarters-cat-btn { cursor: grab; border: 1px dashed rgba(255,255,255,0.3); }
+        .editor-mode-active .smarters-cat-btn:active { cursor: grabbing; }
+        .editor-mode-active .content-card { cursor: grab; }
+        .editor-mode-active .content-card:active { cursor: grabbing; }
+        .editor-add-btn { display: none; background: rgba(70, 211, 105, 0.2); border: 2px dashed var(--watched-green); color: #fff; font-weight: bold; text-align: center; padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: 0.2s; width: 100%; }
+        .editor-add-btn:hover { background: var(--watched-green); color: #000; }
+        
+        /* Botón de Guardar en Modo Editor */
+        .editor-save-btn { display: none; background: rgba(0, 168, 255, 0.2); border: 2px dashed var(--neon-red); color: #fff; font-weight: bold; text-align: center; padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 10px; transition: 0.2s; width: 100%; }
+        .editor-save-btn:hover { background: var(--neon-red); color: #fff; }
+        
+        .editor-mode-active .editor-add-btn, .editor-mode-active .editor-save-btn { display: block; }
+        .editor-banner { display: none; position: absolute; top: 80px; left: 0; width: 100%; background: var(--watched-green); color: #000; text-align: center; font-weight: bold; padding: 5px; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .editor-mode-active .editor-banner { display: block; }
+
+        #login { position: fixed; inset: 0; z-index: 10000; background: url('https://novaplayer.simdif.com/images/public/sd_6a1b20667a85b.png?no_cache=1780169872'); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 10px; }
+        .login-box { background: rgba(0,0,0,0.85); padding: 30px 25px; border-radius: 8px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); margin: auto; }
+        .login-box h1 { margin-bottom: 15px; font-size: 26px; font-weight: bold; text-align: center; }
+        .input-group { position: relative; width: 100%; margin-bottom: 14px; }
+        .login-box input, .admin-box input, .admin-box select { width: 100%; padding: 12px; background: #333; border: none; border-radius: 4px; color: #fff; font-size: 14px; outline: none; user-select: text !important; -webkit-user-select: text !important; }
+        .login-box input:focus, .admin-box input:focus, .admin-box select:focus { box-shadow: var(--neon-glow); border: 1px solid var(--neon-red); }
+        .btn-red { width: 100%; padding: 12px; background: var(--netflix-red); color: #fff; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: var(--transition); }
+        .btn-red:focus, .btn-red:hover { box-shadow: var(--neon-glow); transform: scale(1.02); }
+
+        .navbar { position: relative; width: 100%; height: 80px; display: flex; align-items: center; justify-content: space-between; padding: 0 4%; background: rgba(0,0,0,0.8); z-index: 1000; backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .navbar-left { display: flex; align-items: center; flex: 1; }
+        .navbar-right { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+        .brand-logo { color: var(--netflix-red); font-size: 26px; font-weight: 900; margin-right: 30px; letter-spacing: -1px; background: rgba(20, 20, 20, 0.65); padding: 8px 16px; border-radius: 6px; backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.08); text-shadow: var(--neon-glow); cursor: pointer; }
+        .brand-logo:focus { box-shadow: var(--neon-glow); border-color: var(--neon-red); }
+        .nav-links { display: flex; gap: 10px; }
+        .nav-link, .nav-btn-float { color: #e5e5e5; font-size: 14px; font-weight: bold; transition: var(--transition); background: rgba(20, 20, 20, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; padding: 10px 18px; border-radius: 6px; backdrop-filter: blur(8px); display: flex; align-items: center; gap: 8px; }
+        .nav-link:focus, .nav-link.active, .nav-link:hover, .nav-btn-float:focus, .nav-btn-float:hover { box-shadow: var(--neon-glow); border: 1px solid var(--neon-red); background: var(--netflix-red); color: #fff; transform: translateY(-2px); }
+
+        /* --- Panel Admin --- */
+        #admin-panel { position: fixed; inset: 0; z-index: 20000; background: rgba(10, 10, 10, 0.95); display: none; align-items: center; justify-content: center; padding: 15px; overflow-y: auto; }
+        .admin-box { background: #181818; border: 2px solid var(--netflix-red); border-radius: 10px; width: 100%; max-width: 1000px; padding: 25px; box-shadow: var(--neon-glow); display: flex; flex-direction: column; gap: 15px; margin: auto; max-height: 95vh; overflow-y: auto; overflow-x: hidden; }
+        .admin-box h2 { margin: 0 0 5px 0; color: #fff; font-size: 22px; text-align: center; }
+        .dns-list-container, .folder-manager-container { overflow-y: auto; background: #101010; border: 1px solid #333; border-radius: 6px; padding: 10px; max-height: 200px; }
+        .dns-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid #222; font-family: monospace; font-size: 13px; }
+        .dns-item:last-child { border-bottom: none; }
+        .cms-toolbar { display: flex; gap: 10px; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; }
+        .cms-list-container { background: #111; border: 1px solid #444; border-radius: 8px; padding: 10px; height: 350px; overflow-y: auto; }
+        .cms-item-row { display: grid; grid-template-columns: 3fr 2fr 1fr; gap: 10px; background: #1a1a1a; padding: 10px; margin-bottom: 5px; border-radius: 4px; border-left: 3px solid var(--neon-red); align-items: center; transition: all 0.2s; }
+        .cms-input { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 6px; border-radius: 4px; font-size: 12px; }
+        .cms-controls { display: flex; gap: 8px; justify-content: flex-end; }
+        .cms-btn { background: #333; border: none; color: #fff; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; }
+        .cms-btn:hover { background: var(--netflix-red); }
+        .admin-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+        .loader-inline { display: none; margin-left: 10px; color: var(--watched-green); font-weight: bold; }
+        #loader { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 99999; display: none; align-items: center; justify-content: center; }
+        .nf-loader { width: 50px; height: 50px; border: 4px solid #333; border-top-color: var(--netflix-red); border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <audio id="intro-audio" src="https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3"></audio>
+
+    <div id="intro-screen">
+        <img src="https://novaplayer.simdif.com/images/public/sd_6a21ddcb4e0aa.png?no_cache=1780611569" alt="FIRENETX Logo" class="intro-image-logo">
+        <div class="welcome-text">Bienvenido a FIRENETX</div>
+        <div class="loading-container"><div class="loading-bar"></div></div>
+        <div class="intro-text-animated">Preparando sistema...</div>
+    </div>
+
+    <div id="loader"><div class="nf-loader"></div></div>
+
+    <div id="login">
+        <div class="login-box">
+            <div class="brand-logo nav-item" tabindex="0" id="login-logo-trigger" style="margin-bottom: 25px; font-size: 32px; display: inline-block; text-align: center; width: 100%;" onclick="triggerAdminCounter()">FIRENETX</div>
+            <h1>Acceso al Sistema</h1>
+            <div class="help-tip" style="text-align: center; justify-content: center;">
+                <i class="fas fa-key"></i> Proporciona este código a tu proveedor.
+            </div>
+            <div class="input-group" style="text-align: center; margin-bottom: 20px;">
+                <p style="color: #aaa; margin-bottom: 5px; font-size: 13px;">Código de tu Dispositivo:</p>
+                <div id="device-code-display" style="font-size: 36px; font-weight: bold; letter-spacing: 5px; color: var(--neon-yellow); background: #111; padding: 15px; border-radius: 8px; border: 1px solid var(--neon-red);">------</div>
+            </div>
+            <button class="btn-red nav-item" tabindex="0" style="background: #333; margin-bottom: 10px;" onclick="generateNewDeviceCode()"><i class="fas fa-sync-alt"></i> Nuevo Código</button>
+            <button class="btn-red nav-item" tabindex="0" onclick="manualCheckDeviceCode()"><i class="fas fa-sign-in-alt"></i> Verificar y Entrar</button>
+        </div>
+    </div>
+
+    <!-- PANEL DE ADMINISTRACIÓN -->
+    <div id="admin-panel">
+        <div class="admin-box">
+            <h2 id="admin-panel-title"><i class="fas fa-server"></i> Panel Administrativo</h2>
+            
+            <div class="admin-tabs" style="display:flex; gap:10px; margin-bottom:15px;" id="admin-tabs-container">
+                <button class="cms-btn active nav-item" tabindex="0" style="background:var(--netflix-red);" onclick="switchAdminTab('general')" id="tab-general">General</button>
+                <button class="cms-btn nav-item" tabindex="0" onclick="switchAdminTab('cms')" id="tab-cms" style="display:none;"><i class="fas fa-edit"></i> Gestor Avanzado (CMS)</button>
+            </div>
+
+            <div id="admin-tab-general">
+                <div id="admin-section-users">
+                    <h3 style="color: var(--neon-red); font-size: 16px;"><i class="fas fa-users"></i> Gestión de Usuarios</h3>
+                    <div class="dns-list-container" id="admin-users-list"></div>
+                    <div class="admin-row" style="margin-top:10px;">
+                        <input type="text" id="admin-new-user-code" class="nav-item" tabindex="0" placeholder="Código Disp." style="width: 30%;">
+                        <input type="date" id="admin-new-user-exp" class="nav-item" tabindex="0" style="width: 30%;">
+                        <button class="btn-red nav-item" tabindex="0" style="width:auto;" onclick="addUserFromPanel()">Añadir</button>
+                    </div>
+                </div>
+
+                <hr style="border: 1px solid #333; margin: 15px 0;">
+
+                <div id="admin-section-playlists">
+                    <h3 style="color: var(--neon-yellow); font-size: 16px;"><i class="fas fa-list"></i> Playlists M3U Base (Enlaces RAW o Dropbox)</h3>
+                    <div class="dns-list-container" id="admin-playlist-list" style="max-height: 300px;"></div>
+                    <div class="admin-row" style="margin-top:10px;">
+                        <input type="text" id="admin-new-pl-name" class="nav-item" tabindex="0" placeholder="Nombre" style="width: 25%;">
+                        <input type="text" id="admin-new-pl-url" class="nav-item" tabindex="0" placeholder="URL (.m3u)" style="width: 40%;">
+                        <select id="admin-new-pl-type" class="nav-item" tabindex="0" style="width: 20%;">
+                            <option value="movie">Películas</option>
+                            <option value="series">Series</option>
+                            <option value="live">TV</option>
+                        </select>
+                        <button class="btn-red nav-item" tabindex="0" style="width:auto;" onclick="addPlaylistFromPanel()">Añadir</button>
+                    </div>
+                </div>
+
+                <hr style="border: 1px solid #333; margin: 15px 0;">
+
+                <!-- SISTEMA DE RESPALDO Y SEGURIDAD -->
+                <div id="admin-section-backup">
+                    <h3 style="color: var(--neon-red); font-size: 16px;"><i class="fas fa-shield-alt"></i> Sistema de Respaldo y Seguridad</h3>
+                    <div class="help-tip"><i class="fas fa-info-circle"></i> Descarga tu base de datos (JSON) periódicamente antes de hacer cambios masivos. Si algo se borra accidentalmente en Npoint, podrás restaurarlo instantáneamente aquí.</div>
+                    <div class="admin-row" style="margin-top:10px;">
+                        <button class="btn-red nav-item" tabindex="0" style="width:auto; background:var(--neon-red);" onclick="exportBackup()"><i class="fas fa-download"></i> Descargar JSON</button>
+                        <label class="btn-red nav-item" tabindex="0" style="width:auto; background:var(--watched-green); cursor: pointer; text-align: center;">
+                            <i class="fas fa-upload"></i> Restaurar JSON
+                            <input type="file" accept=".json" style="display:none;" onchange="importBackup(event)">
+                        </label>
+                        <button class="btn-red nav-item" tabindex="0" style="width:auto; background:#555;" onclick="restoreLocalFailsafe()"><i class="fas fa-history"></i> Cargar Auto-Respaldo</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GESTOR CMS AVANZADO -->
+            <div id="admin-tab-cms" style="display:none;">
+                <div class="help-tip"><i class="fas fa-folder-open"></i> Sistema CMS Nube: Edita tu nube o añade nuevas Playlists a tus categorías sin perder lo que ya has organizado.</div>
+                
+                <div class="cms-toolbar">
+                    <select id="cms-playlist-select" class="nav-item" tabindex="0" style="flex:1;">
+                        <option value="">Selecciona qué cargar al gestor...</option>
+                    </select>
+                    <button class="btn-red nav-item" tabindex="0" style="margin:0; width:150px;" onclick="loadPlaylistIntoCMS()"><i class="fas fa-download"></i> Cargar al Gestor</button>
+                    <span id="cms-status" class="loader-inline">Cargando...</span>
+                </div>
+
+                <!-- CREADOR DE CARPETAS INTELIGENTES -->
+                <div class="admin-row" style="margin-top:15px; background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid var(--neon-red);">
+                    <h4 style="margin: 0 0 10px 0; color: var(--neon-yellow); width: 100%; font-size: 14px;"><i class="fas fa-magic"></i> Creador de Carpetas Inteligentes (Acomodo Automático)</h4>
+                    <input type="text" id="smart-folder-name" class="nav-item" tabindex="0" placeholder="Nombre de Carpeta (Ej: Acción)" style="width: 25%;">
+                    <input type="text" id="smart-folder-keywords" class="nav-item" tabindex="0" placeholder="Palabras clave (Opcional, si está vacío usará el nombre de la carpeta)" style="width: 45%;">
+                    <button class="btn-red nav-item" tabindex="0" style="width: auto; margin:0;" onclick="applySmartFolder()"><i class="fas fa-robot"></i> Organizar</button>
+                </div>
+
+                <!-- GESTOR DE CARPETAS EN PANEL OCULTO -->
+                <div class="admin-row" style="margin-top:15px; background: #1a1a1a; padding: 12px; border-radius: 8px; border: 1px solid var(--neon-yellow);">
+                    <h4 style="margin: 0 0 10px 0; color: var(--neon-yellow); width: 100%; font-size: 14px;"><i class="fas fa-folder-cog"></i> Gestor de Carpetas (Organizar, Editar, Borrar)</h4>
+                    <div class="folder-manager-container" id="cms-folders-list" style="width: 100%;">
+                        <span style="color:#777; font-size:12px;">Carga contenido en el gestor para ver y editar las carpetas.</span>
+                    </div>
+                </div>
+
+                <div class="admin-row" style="margin-top:15px; justify-content: space-between;">
+                    <input type="text" id="cms-search" class="nav-item" tabindex="0" placeholder="Buscar canal, película o carpeta..." style="width:40%;" oninput="renderCMSList()">
+                    <button class="cms-btn nav-item" tabindex="0" onclick="addNewCMSItem()"><i class="fas fa-plus"></i> Añadir Nuevo Item Manual</button>
+                </div>
+
+                <div class="cms-list-container" id="cms-editor-list" style="margin-top: 10px;">
+                    <!-- Items renderizados aquí -->
+                </div>
+
+                <div class="admin-row" style="margin-top: 10px; justify-content: flex-end;">
+                    <button class="btn-red nav-item" tabindex="0" style="margin:0; background:var(--watched-green); width:200px;" onclick="saveCMSToCloud()"><i class="fas fa-cloud-upload-alt"></i> Guardar CMS en Nube</button>
+                </div>
+            </div>
+
+            <div class="admin-row" style="margin-top: 20px;">
+                <button class="btn-red nav-item" tabindex="0" style="margin:0; background:#333;" onclick="closeAdminPanel()">Cerrar</button>
+                <button id="admin-btn-save" class="btn-red nav-item" tabindex="0" style="margin:0; background:var(--watched-green);" onclick="saveAndReloadAdmin()"><i class="fas fa-save"></i> Guardar Cambios Generales</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVEGACIÓN Y CONTENIDO PRINCIPAL -->
+    <div class="editor-banner"><i class="fas fa-edit"></i> MODO EDITOR VISUAL ACTIVO - Arrastra para reordenar o usa los íconos para editar</div>
+    <nav class="navbar" id="main-nav" style="display:none;">
+        <div class="navbar-left">
+            <!-- AQUÍ ESTÁ EL TRIGGER DEL MODO EDITOR VISUAL -->
+            <div class="brand-logo nav-item" tabindex="0" onclick="triggerEditorVisual()">FIRENETX</div>
+            <div class="nav-links">
+                <button class="nav-link nav-item active" tabindex="0" id="btn-nav-live" onclick="changeMode('live')"><i class="fas fa-tv"></i> Televisión</button>
+                <button class="nav-link nav-item" tabindex="0" id="btn-nav-movie" onclick="changeMode('movie')"><i class="fas fa-film"></i> Películas</button>
+                <button class="nav-link nav-item" tabindex="0" id="btn-nav-series" onclick="changeMode('series')"><i class="fas fa-video"></i> Series</button>
+            </div>
+        </div>
+        <div class="navbar-right">
+            <button class="nav-btn-float nav-item" tabindex="0" style="color:#aaa;" onclick="location.reload()"><i class="fas fa-sign-out-alt"></i> Salir</button>
+        </div>
+    </nav>
+
+    <main id="main-content" style="display:none;">
+        <div class="smarters-container">
+            <!-- Barra lateral para las CARPETAS (Categorías) con Contadores -->
+            <div class="smarters-sidebar" id="left-category-sidebar"></div>
+            <!-- Cuadrícula para el CONTENIDO -->
+            <div class="smarters-content">
+                <div class="smarters-grid" id="main-content-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const NPOINT_URL = "https://api.npoint.io/0384788287def12ad182"; 
+        let isSavingToCloud = false;
+
+        let dnsList = [];
+        let playlistsList = [];
+        let usersList = [];
+        let resellersList = [];
+        let cloudContent = { live: [], movie: [], series: [] };
+        
+        let currentCMSType = '';
+        let currentCMSData = [];
+        let currentAppMode = ''; 
+        let currentCategory = ''; 
+
+        /* VARIABLES MODO EDITOR VISUAL */
+        let isEditorModeActive = false;
+        let visualEditorClickCount = 0;
+        let isDraggingElement = false; 
+
+        // HELPER GLOBAL: Verifica si un ítem debe mostrarse basándose en su estado o el de su playlist origen
+        function isItemVisible(item) {
+            if (item.hidden === true) return false;
+            if (item.sourceUrl) {
+                const pl = playlistsList.find(p => p.url === item.sourceUrl);
+                if (pl && pl.hidden === true) return false;
+            }
+            return true;
+        }
+
+        // HELPER GLOBAL: Normaliza el grupo para evitar la carpeta "General"
+        function getGroup(item) {
+            let g = item.group || 'Todo el contenido';
+            if (g === 'General') return 'Todo el contenido';
+            return g;
+        }
+
+        async function loadAdminData() {
+            try {
+                const response = await fetch(NPOINT_URL + "?t=" + Date.now(), { cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if(data.dnsList) dnsList = data.dnsList;
+                    if(data.playlistsList) playlistsList = data.playlistsList;
+                    if(data.usersList) usersList = data.usersList;
+                    if(data.resellersList) resellersList = data.resellersList;
+                    if(data.cloudContent) cloudContent = data.cloudContent;
+                }
+            } catch (err) { console.warn("Error cargando npoint", err); }
+        }
+
+        // FUNCIÓN MODIFICADA PARA GUARDAR AUTO-RESPALDO LOCAL
+        async function autoSaveDataSilently() {
+            isSavingToCloud = true;
+            const payload = { dnsList, playlistsList, usersList, resellersList, cloudContent };
+            
+            // SISTEMA DE SEGURIDAD 3: Respaldo oculto en el propio navegador
+            localStorage.setItem('firenetx_failsafe_backup', JSON.stringify(payload));
+            
+            try {
+                await fetch(NPOINT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch(e) { console.error("Error guardando en la nube", e); }
+            isSavingToCloud = false;
+        }
+
+        /* --- NUEVO SISTEMA AVANZADO DE RESPALDO Y RESTAURACIÓN (JSON) --- */
+        function exportBackup() {
+            const dataToBackup = { dnsList, playlistsList, usersList, resellersList, cloudContent };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToBackup, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            
+            const date = new Date();
+            const dateString = date.toISOString().split('T')[0] + "_" + date.getHours() + date.getMinutes();
+            downloadAnchorNode.setAttribute("download", "FIRENETX_Backup_" + dateString + ".json");
+            
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            
+            alert("✅ Respaldo descargado con éxito.\nPor favor, guarda este archivo en un lugar seguro.");
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!confirm("⚠️ ADVERTENCIA CRÍTICA: Restaurar un respaldo sobreescribirá absolutamente TODOS los datos actuales de Npoint.\n\n¿Estás seguro de que quieres reemplazar tus datos actuales con este archivo?")) {
+                event.target.value = ''; // Limpiar el input
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validar estructura básica
+                    if(importedData.cloudContent !== undefined || importedData.playlistsList !== undefined) {
+                        dnsList = importedData.dnsList || [];
+                        playlistsList = importedData.playlistsList || [];
+                        usersList = importedData.usersList || [];
+                        resellersList = importedData.resellersList || [];
+                        cloudContent = importedData.cloudContent || { live: [], movie: [], series: [] };
+                        
+                        alert("Datos válidos leídos del archivo. Guardando en la nube de Npoint...");
+                        await autoSaveDataSilently();
+                        alert("✅ ¡Restauración completada con éxito!\nLa base de datos se ha reparado. El sistema se recargará ahora.");
+                        location.reload();
+                    } else {
+                        alert("❌ Error: El archivo de respaldo no es de FIRENETX o está corrupto.");
+                    }
+                } catch (error) {
+                    alert("❌ Error al leer el archivo JSON. Asegúrate de que sea el respaldo original válido.");
+                    console.error(error);
+                }
+                event.target.value = ''; // Limpiar el input para permitir subir el mismo archivo de nuevo si se requiere
+            };
+            reader.readAsText(file);
+        }
+
+        function restoreLocalFailsafe() {
+            const failsafe = localStorage.getItem('firenetx_failsafe_backup');
+            if(!failsafe) {
+                alert("❌ No hay ningún respaldo de seguridad automático guardado en la memoria de este dispositivo/navegador.");
+                return;
+            }
+            if(confirm("⚠️ ¿Restaurar el último estado que funcionó en ESTE navegador?\n\nUsa esto solo si se te borró Npoint y NO descargaste el JSON de respaldo. Se sobreescribirá Npoint actual.")) {
+                try {
+                    const importedData = JSON.parse(failsafe);
+                    dnsList = importedData.dnsList || [];
+                    playlistsList = importedData.playlistsList || [];
+                    usersList = importedData.usersList || [];
+                    resellersList = importedData.resellersList || [];
+                    cloudContent = importedData.cloudContent || { live: [], movie: [], series: [] };
+                    
+                    autoSaveDataSilently().then(() => {
+                        alert("✅ Respaldo local de emergencia restaurado. Recargando app...");
+                        location.reload();
+                    });
+                } catch(e) {
+                    alert("❌ El respaldo local está corrupto.");
+                }
+            }
+        }
+        /* --- FIN SISTEMA DE RESPALDO --- */
+
+        /* --- BOTÓN EXPLÍCITO DE GUARDAR EN EDITOR VISUAL --- */
+        async function visualEditorSaveChanges() {
+            const saveBtn = document.querySelector('.editor-save-btn');
+            if(saveBtn) saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            
+            await autoSaveDataSilently();
+            
+            if(saveBtn) saveBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cambios';
+            alert("Cambios guardados y organizados con éxito en la Nube.");
+        }
+
+        function initDeviceCode() {
+            let code = localStorage.getItem('firenetx_device_code');
+            if(!code) {
+                code = Math.random().toString(36).substring(2,8).toUpperCase();
+                localStorage.setItem('firenetx_device_code', code);
+            }
+            document.getElementById('device-code-display').innerText = code;
+        }
+
+        function generateNewDeviceCode() {
+            const code = Math.random().toString(36).substring(2,8).toUpperCase();
+            localStorage.setItem('firenetx_device_code', code);
+            document.getElementById('device-code-display').innerText = code;
+        }
+
+        /* LOGIN PANEL OCULTO CMS */
+        let loginClickCount = 0;
+        function triggerAdminCounter() {
+            loginClickCount++;
+            if(loginClickCount >= 3) {
+                loginClickCount = 0;
+                const accessCode = prompt("Clave de acceso al panel:");
+                if(accessCode === "master" || accessCode === "8493") {
+                    openAdminPanel('Master');
+                } else if(accessCode === "firenetx") {
+                    openAdminPanel('Súper Reseller');
+                } else if(accessCode === "firenetxpanel") {
+                    openAdminPanel('CMS_Master');
+                } else {
+                    alert("Código incorrecto.");
+                }
+            }
+            setTimeout(() => loginClickCount = 0, 3000);
+        }
+
+        /* LOGIN EDITOR VISUAL EN LA APP */
+        function triggerEditorVisual() {
+            visualEditorClickCount++;
+            if(visualEditorClickCount >= 5) {
+                visualEditorClickCount = 0;
+                const pwd = prompt("Introduce clave de Editor Visual:");
+                if(pwd === "firenetxedit") {
+                    isEditorModeActive = !isEditorModeActive;
+                    if(isEditorModeActive) {
+                        document.body.classList.add('editor-mode-active');
+                    } else {
+                        document.body.classList.remove('editor-mode-active');
+                    }
+                    if(currentAppMode) changeMode(currentAppMode); // Refresca la vista
+                } else {
+                    alert("Clave incorrecta.");
+                }
+            }
+            setTimeout(() => visualEditorClickCount = 0, 3000);
+        }
+
+        async function manualCheckDeviceCode() {
+            await loadAdminData();
+            const code = localStorage.getItem('firenetx_device_code');
+            const user = usersList.find(u => u.code === code);
+            
+            if(user || true) { // Bypass para pruebas habilitado
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('main-nav').style.display = 'flex';
+                document.getElementById('main-content').style.display = 'block';
+                changeMode('live'); 
+            } else {
+                alert("Código no autorizado.");
+            }
+        }
+
+        /* --- CONEXIÓN TMDB --- */
+        async function tryTMDB(imgElement, title, type) {
+            imgElement.removeAttribute('onerror');
+            if(imgElement.getAttribute('data-tmdb-tried') === 'true') { return; }
+            imgElement.setAttribute('data-tmdb-tried', 'true');
+            
+            imgElement.src = 'https://via.placeholder.com/300x450/111/fff?text=Buscando...';
+            let cleanTitle = title.replace(/(HD|FHD|SD|4K|720p|1080p|latino|castellano|subtitulado|dual|audio|mkv|mp4|\(.*\)|\[.*\])/gi, '').trim();
+
+            try {
+                const apiKey = '3fd2be6f0c70a2a598f084ddfb75487c'; 
+                const endpoint = type === 'series' ? 'tv' : 'movie';
+                const url = `https://api.themoviedb.org/3/search/${endpoint}?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}&language=es-MX&page=1&include_adult=false`;
+
+                const res = await fetch(url);
+                if(!res.ok) throw new Error("TMDB HTTP Error");
+                const data = await res.json();
+
+                if(data.results && data.results.length > 0 && data.results[0].poster_path) {
+                    imgElement.src = 'https://image.tmdb.org/t/p/w500' + data.results[0].poster_path;
+                } else {
+                    imgElement.src = 'https://via.placeholder.com/300x450/111/fff?text=' + encodeURIComponent(cleanTitle.substring(0, 15));
+                }
+            } catch (err) {
+                console.warn("Fallo al buscar en TMDB:", err);
+                imgElement.src = 'https://via.placeholder.com/300x450/111/fff?text=Sin+Imagen';
+            }
+        }
+
+        /* --- LÓGICA PRINCIPAL DE LA APP --- */
+        function changeMode(mode) {
+            currentAppMode = mode;
+            
+            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-nav-' + mode).classList.add('active');
+            
+            const grid = document.getElementById('main-content-grid');
+            if(mode === 'live') {
+                grid.classList.add('live-mode');
+            } else {
+                grid.classList.remove('live-mode');
+            }
+
+            const data = cloudContent[mode] || [];
+            const sidebar = document.getElementById('left-category-sidebar');
+            
+            // Crear array de conteos para las carpetas SOLO de elementos visibles
+            const categoryCounts = {};
+            data.forEach(item => {
+                if (!isItemVisible(item)) return; // Omitir del contador si está oculto
+                const cat = getGroup(item);
+                categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+            });
+            
+            const categories = Object.keys(categoryCounts);
+            
+            let sidebarHTML = '';
+            
+            // Botones del Editor
+            if(isEditorModeActive) {
+                sidebarHTML += `<div class="editor-add-btn" onclick="uiVisualAddFolder()"><i class="fas fa-folder-plus"></i> Nueva Carpeta Inteligente</div>`;
+                sidebarHTML += `<div class="editor-save-btn" onclick="visualEditorSaveChanges()"><i class="fas fa-save"></i> Guardar Cambios</div>`;
+            }
+
+            // CARPETA PERMANENTE "Todo el contenido"
+            const totalContentCount = data.filter(item => isItemVisible(item)).length;
+            sidebarHTML += `
+                <button class="smarters-cat-btn nav-item ${currentCategory === 'Todo el contenido' ? 'active' : ''}" tabindex="0" 
+                    onclick="if(!isDraggingElement) loadCategory('Todo el contenido')" 
+                    id="cat-btn-Todo-el-contenido">
+                    <div class="cat-info"><i class="fas fa-globe"></i> Todo el contenido</div>
+                    <span class="cat-badge">${totalContentCount}</span>
+                </button>
+            `;
+
+            if(categories.length === 0 && !isEditorModeActive) {
+                sidebarHTML += `<div class='help-tip'>No hay carpetas adicionales.</div>`;
+            } else {
+                sidebarHTML += categories.map((cat, idx) => {
+                    if(cat === 'Todo el contenido') return ''; // Prevenir duplicado de nombre
+                    return `
+                    <button class="smarters-cat-btn nav-item ${currentCategory === cat ? 'active' : ''}" tabindex="0" 
+                        onclick="if(!isDraggingElement) loadCategory('${cat}')" 
+                        id="cat-btn-${cat.replace(/\s+/g, '-')}"
+                        draggable="${isEditorModeActive}" 
+                        ondragstart="dragFolderStart(event, ${idx})" 
+                        ondragend="dragEnd()"
+                        ondragover="allowDrop(event)" 
+                        ondrop="handleFolderDrop(event, '${cat}', ${idx})">
+                        <div class="cat-info"><i class="fas fa-folder"></i> ${cat}</div>
+                        <span class="cat-badge">${categoryCounts[cat]}</span>
+                        ${isEditorModeActive ? `
+                        <div class="editor-controls">
+                            <i class="fas fa-edit editor-btn" title="Renombrar Carpeta" onclick="event.stopPropagation(); uiVisualRenameFolder('${cat}')"></i>
+                            <i class="fas fa-trash editor-btn delete" title="Borrar Carpeta" onclick="event.stopPropagation(); uiVisualDeleteFolder('${cat}')"></i>
+                        </div>` : ''}
+                    </button>
+                    `;
+                }).join('');
+            }
+            
+            sidebar.innerHTML = sidebarHTML;
+
+            // Seleccionar carpeta
+            if(currentCategory === 'Todo el contenido' || categories.includes(currentCategory)) {
+                loadCategory(currentCategory);
+            } else {
+                loadCategory('Todo el contenido');
+            }
+        }
+
+        function loadCategory(category) {
+            currentCategory = category;
+            const data = cloudContent[currentAppMode] || [];
+            
+            document.querySelectorAll('.smarters-cat-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById('cat-btn-' + category.replace(/\s+/g, '-'));
+            if(activeBtn) activeBtn.classList.add('active');
+
+            let items = [];
+            // Lógica para traer TODO el contenido VISIBLE sin importar la carpeta a la que pertenezca
+            if(category === 'Todo el contenido') {
+                items = data.filter(item => isItemVisible(item));
+            } else {
+                items = data.filter(item => getGroup(item) === category && isItemVisible(item));
+            }
+            
+            const grid = document.getElementById('main-content-grid');
+            let gridHTML = '';
+
+            // BOTONES DE AÑADIR CONTENIDO A CARPETA EXISTENTE EN MODO EDITOR
+            if(isEditorModeActive && category !== 'Todo el contenido') {
+                const isLive = currentAppMode === 'live';
+                gridHTML += `
+                <div class="content-card nav-item ${isLive ? 'live-card' : ''}" style="border: 2px dashed var(--watched-green); display:flex; align-items:center; justify-content:center; ${isLive ? 'flex-direction:row;' : 'flex-direction:column;'} background: rgba(70, 211, 105, 0.1); cursor:pointer;" onclick="uiVisualAddItem()">
+                    <i class="fas fa-plus-circle" style="font-size: ${isLive?'20px':'25px'}; color:var(--watched-green); ${isLive ? 'margin-right:10px;' : 'margin-bottom:8px;'}"></i>
+                    <div style="font-weight:bold; color:var(--watched-green); font-size:${isLive?'14px':'12px'}; text-align:center; line-height:1.2;">Añadir<br>Manual</div>
+                </div>
+                <div class="content-card nav-item ${isLive ? 'live-card' : ''}" style="border: 2px dashed var(--neon-yellow); display:flex; align-items:center; justify-content:center; ${isLive ? 'flex-direction:row;' : 'flex-direction:column;'} background: rgba(0, 168, 255, 0.1); cursor:pointer;" onclick="uiVisualAddSmartToFolder()">
+                    <i class="fas fa-robot" style="font-size: ${isLive?'20px':'25px'}; color:var(--neon-yellow); ${isLive ? 'margin-right:10px;' : 'margin-bottom:8px;'}"></i>
+                    <div style="font-weight:bold; color:var(--neon-yellow); font-size:${isLive?'14px':'12px'}; text-align:center; line-height:1.2;">Extraer<br>Inteligente</div>
+                </div>
+                <div class="content-card nav-item ${isLive ? 'live-card' : ''}" style="border: 2px dashed var(--netflix-red); display:flex; align-items:center; justify-content:center; ${isLive ? 'flex-direction:row;' : 'flex-direction:column;'} background: rgba(255, 102, 0, 0.1); cursor:pointer;" onclick="uiVisualAddM3UToFolder()">
+                    <i class="fas fa-list" style="font-size: ${isLive?'20px':'25px'}; color:var(--netflix-red); ${isLive ? 'margin-right:10px;' : 'margin-bottom:8px;'}"></i>
+                    <div style="font-weight:bold; color:var(--netflix-red); font-size:${isLive?'14px':'12px'}; text-align:center; line-height:1.2;">Pegar<br>Lista M3U</div>
+                </div>
+                `;
+            }
+
+            gridHTML += items.map((item, idx) => {
+                const safeTitle = (item.name || 'Desconocido').replace(/['"\\`]/g, '').trim();
+                if(!item.id) item.id = Math.random().toString(36).substr(2, 9); // Asegurar ID
+                
+                const controls = isEditorModeActive ? `
+                    <div class="editor-controls">
+                        <i class="fas fa-edit editor-btn" title="Editar URL/Nombre" onclick="event.stopPropagation(); uiVisualEditItem('${item.id}')"></i>
+                        <i class="fas fa-trash editor-btn delete" title="Borrar" onclick="event.stopPropagation(); uiVisualDeleteItem('${item.id}')"></i>
+                    </div>` : '';
+
+                if(currentAppMode === 'live') {
+                    return `
+                    <div class="content-card live-card nav-item" tabindex="0" 
+                        onclick="if(!isDraggingElement) playContent('${item.url}')"
+                        draggable="${isEditorModeActive}" 
+                        ondragstart="dragItemStart(event, '${item.id}')" 
+                        ondragend="dragEnd()"
+                        ondragover="allowDrop(event)" 
+                        ondrop="dropItem(event, '${item.id}')">
+                        <i class="fas fa-play-circle" style="font-size: 20px; color: var(--netflix-red);"></i>
+                        <div class="content-title">${item.name}</div>
+                        ${controls}
+                    </div>
+                    `;
+                } else {
+                    let imgHTML = '';
+                    if (!item.logo || item.logo.trim() === '') {
+                        imgHTML = `<img src="invalid_url" class="content-img" loading="lazy" onerror="tryTMDB(this, '${safeTitle}', '${currentAppMode}')">`;
+                    } else {
+                        imgHTML = `<img src="${item.logo}" class="content-img" loading="lazy" onerror="tryTMDB(this, '${safeTitle}', '${currentAppMode}')">`;
+                    }
+
+                    return `
+                    <div class="content-card nav-item" tabindex="0" 
+                        onclick="if(!isDraggingElement) playContent('${item.url}')"
+                        draggable="${isEditorModeActive}" 
+                        ondragstart="dragItemStart(event, '${item.id}')" 
+                        ondragend="dragEnd()"
+                        ondragover="allowDrop(event)" 
+                        ondrop="dropItem(event, '${item.id}')">
+                        ${imgHTML}
+                        <div class="content-title">${item.name}</div>
+                        ${controls}
+                    </div>
+                    `;
+                }
+            }).join('');
+
+            grid.innerHTML = gridHTML;
+        }
+
+        function playContent(url) {
+            if(isEditorModeActive) return; // Prevenir reproducción si estás editando accidentalmente
+            let scheme = "http";
+            let cleanUrl = url;
+            if (url.startsWith("https://")) { scheme = "https"; cleanUrl = url.substring(8); } 
+            else if (url.startsWith("http://")) { scheme = "http"; cleanUrl = url.substring(7); }
+            
+            let intentString = "intent://" + cleanUrl + "#Intent;scheme=" + scheme + ";action=android.intent.action.VIEW;type=video/*;end";
+            window.location.href = intentString;
+        }
+
+        /* =======================================================
+           FUNCIONES DEL MODO EDITOR VISUAL (UI Y DRAG & DROP)
+           ======================================================= */
+        
+        let draggedFolderIndex = null;
+        let draggedItemId = null;
+
+        function allowDrop(ev) { ev.preventDefault(); }
+        
+        // --- DRAG & DROP CARPETAS Y CONTENIDOS ---
+        function dragFolderStart(ev, index) {
+            draggedFolderIndex = index;
+            isDraggingElement = true;
+        }
+        function dragItemStart(ev, id) {
+            draggedItemId = id;
+            isDraggingElement = true;
+        }
+        function dragEnd() {
+            draggedItemId = null;
+            draggedFolderIndex = null;
+            setTimeout(() => isDraggingElement = false, 100); 
+        }
+
+        // LÓGICA: Soltar sobre el botón de una Carpeta
+        function handleFolderDrop(ev, targetCat, targetIndex) {
+            ev.preventDefault();
+            
+            // Caso 1: Soltamos un ITEM (canal/película) dentro de esta CARPETA
+            if (draggedItemId !== null) {
+                let data = cloudContent[currentAppMode];
+                const itemIndex = data.findIndex(x => x.id === draggedItemId);
+                if(itemIndex > -1) {
+                    if(getGroup(data[itemIndex]) !== targetCat) {
+                        data[itemIndex].group = targetCat;
+                        cloudContent[currentAppMode] = data;
+                        changeMode(currentAppMode); // Refrescar la vista
+                    }
+                }
+                dragEnd();
+                return;
+            }
+
+            // Caso 2: Soltamos una CARPETA encima de otra para reordenar
+            if (draggedFolderIndex !== null && draggedFolderIndex !== targetIndex) {
+                const data = cloudContent[currentAppMode];
+                const folders = [...new Set(data.map(item => getGroup(item)))];
+                const draggedFolder = folders[draggedFolderIndex];
+                
+                folders.splice(draggedFolderIndex, 1);
+                folders.splice(targetIndex, 0, draggedFolder);
+                
+                let newData = [];
+                folders.forEach(f => {
+                    newData = newData.concat(data.filter(i => getGroup(i) === f));
+                });
+                
+                cloudContent[currentAppMode] = newData;
+                changeMode(currentAppMode);
+                dragEnd();
+            }
+        }
+
+        // LÓGICA: Soltar un elemento para reordenarlo en la grilla
+        function dropItem(ev, targetId) {
+            ev.preventDefault();
+            if (draggedItemId === null || draggedItemId === targetId) return;
+
+            let data = cloudContent[currentAppMode];
+            const dragIndex = data.findIndex(x => x.id === draggedItemId);
+            const dropIndex = data.findIndex(x => x.id === targetId);
+
+            if(dragIndex > -1 && dropIndex > -1) {
+                const draggedItem = data.splice(dragIndex, 1)[0];
+                data.splice(dropIndex, 0, draggedItem);
+                
+                cloudContent[currentAppMode] = data;
+                loadCategory(currentCategory); 
+            }
+            dragEnd();
+        }
+
+        // --- ACCIONES UI EDITOR VISUAL ---
+        function uiVisualRenameFolder(oldName) {
+            const newName = prompt(`Renombrar carpeta "${oldName}" a:`, oldName);
+            if(!newName || newName.trim() === '' || newName === oldName) return;
+            
+            cloudContent[currentAppMode].forEach(item => {
+                if(getGroup(item) === oldName) {
+                    item.group = newName.trim();
+                }
+            });
+            currentCategory = newName.trim();
+            changeMode(currentAppMode);
+        }
+
+        function uiVisualDeleteFolder(folderName) {
+            if(confirm(`¿Estás seguro de borrar TODA la carpeta "${folderName}" y todo su contenido?`)) {
+                cloudContent[currentAppMode] = cloudContent[currentAppMode].filter(item => getGroup(item) !== folderName);
+                currentCategory = 'Todo el contenido'; 
+                changeMode(currentAppMode);
+            }
+        }
+
+        /* --- CREADOR DE CARPeta INTELIGENTE VISUAL --- */
+        function uiVisualAddFolder() {
+            const folderName = prompt("Nombre de la nueva carpeta:");
+            if(!folderName || folderName.trim() === '') return;
+
+            const keywordsStr = prompt("Acomodo Inteligente:\nEscribe palabras clave, años o categorías para extraer contenido a esta carpeta (separadas por comas).\nSi lo dejas vacío, crearás la carpeta manualmente.");
+            
+            let addedCount = 0;
+
+            if(keywordsStr && keywordsStr.trim() !== '') {
+                const keywords = keywordsStr.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
+                
+                // Extraemos y "duplicamos" el contenido para no dañar la estructura original.
+                const itemsToCopy = cloudContent[currentAppMode].filter(item => {
+                    const itemName = (item.name || '').toLowerCase();
+                    const itemGroup = getGroup(item).toLowerCase();
+                    return keywords.some(kw => itemName.includes(kw) || itemGroup.includes(kw));
+                });
+
+                itemsToCopy.forEach(item => {
+                    cloudContent[currentAppMode].push({
+                        ...item,
+                        id: Math.random().toString(36).substr(2, 9), // ID Nuevo
+                        group: folderName.trim() // Se asigna a la nueva carpeta
+                    });
+                    addedCount++;
+                });
+            }
+
+            // Si no se usó buscador inteligente o no encontró coincidencias, se crea vacía (dummy)
+            if(addedCount === 0) {
+                cloudContent[currentAppMode].push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    name: 'Nuevo Contenido',
+                    group: folderName.trim(),
+                    logo: '',
+                    url: 'http://'
+                });
+            } else {
+                alert(`¡Organización completada! Se sumaron ${addedCount} contenidos a la carpeta "${folderName.trim()}" manteniendo la estructura original intacta.`);
+            }
+
+            currentCategory = folderName.trim();
+            changeMode(currentAppMode);
+        }
+
+        function uiVisualEditItem(id) {
+            const item = cloudContent[currentAppMode].find(x => x.id === id);
+            if(!item) return;
+
+            const newName = prompt("Nombre del contenido:", item.name);
+            if(newName === null) return;
+            const newUrl = prompt("URL del Video o Canal (.m3u8, .mp4):", item.url);
+            if(newUrl === null) return;
+            const newLogo = prompt("URL del Logo o Póster (Déjalo vacío para TMDB):", item.logo || '');
+            if(newLogo === null) return;
+
+            item.name = newName;
+            item.url = newUrl;
+            item.logo = newLogo;
+
+            loadCategory(currentCategory);
+        }
+
+        function uiVisualDeleteItem(id) {
+            if(confirm("¿Eliminar este contenido?")) {
+                cloudContent[currentAppMode] = cloudContent[currentAppMode].filter(x => x.id !== id);
+                loadCategory(currentCategory);
+                
+                if (currentCategory !== 'Todo el contenido') {
+                    const leftInCat = cloudContent[currentAppMode].filter(x => getGroup(x) === currentCategory);
+                    if(leftInCat.length === 0) {
+                        changeMode(currentAppMode);
+                    }
+                } else {
+                    changeMode(currentAppMode); // Para actualizar el número badge total
+                }
+            }
+        }
+
+        /* --- NUEVAS HERRAMIENTAS PARA AÑADIR A CARPETAS YA GUARDADAS --- */
+
+        // 1. Añadir 1 ítem manual clásico
+        function uiVisualAddItem() {
+            let targetCat = currentCategory;
+            if(targetCat === 'Todo el contenido') { alert("Ve a una carpeta específica para añadir contenido manual."); return; }
+            
+            const name = prompt("Nombre del nuevo contenido:");
+            if(!name) return;
+            const url = prompt("URL del video/canal:");
+            if(!url) return;
+
+            cloudContent[currentAppMode].push({
+                id: Math.random().toString(36).substr(2, 9),
+                name: name,
+                group: targetCat,
+                logo: '',
+                url: url
+            });
+
+            changeMode(currentAppMode); 
+        }
+
+        // 2. Extraer Inteligentemente desde la BD general hacia la Carpeta Actual
+        function uiVisualAddSmartToFolder() {
+            let targetCat = currentCategory;
+            if(targetCat === 'Todo el contenido') return;
+            
+            const keywordsStr = prompt(`AÑADIR CONTENIDO A: "${targetCat}"\n\nEscribe palabras clave para buscar en todo tu contenido y añadirlo a esta carpeta (separadas por comas):`);
+            if(!keywordsStr || keywordsStr.trim() === '') return;
+
+            const keywords = keywordsStr.toLowerCase().split(',').map(k => k.trim()).filter(k => k.length > 0);
+            let addedCount = 0;
+
+            const itemsToCopy = cloudContent[currentAppMode].filter(item => {
+                const itemGroup = getGroup(item);
+                if (itemGroup === targetCat) return false; // Evitamos duplicar si ya está en esta misma carpeta
+                
+                const itemName = (item.name || '').toLowerCase();
+                return keywords.some(kw => itemName.includes(kw) || itemGroup.toLowerCase().includes(kw));
+            });
+
+            itemsToCopy.forEach(item => {
+                cloudContent[currentAppMode].push({
+                    ...item,
+                    id: Math.random().toString(36).substr(2, 9),
+                    group: targetCat
+                });
+                addedCount++;
+            });
+
+            if(addedCount > 0) {
+                alert(`¡Se añadieron ${addedCount} contenidos a la carpeta "${targetCat}"!`);
+                changeMode(currentAppMode);
+            } else {
+                alert("No se encontraron coincidencias nuevas para agregar.");
+            }
+        }
+
+        // 3. Pegar M3U Masivo a la Carpeta Actual
+        function uiVisualAddM3UToFolder() {
+            let targetCat = currentCategory;
+            if(targetCat === 'Todo el contenido') return;
+            
+            const m3uText = prompt(`PEGAR LISTA M3U EN: "${targetCat}"\n\nPega aquí el texto con formato #EXTINF o enlaces directos:`);
+            if(!m3uText || m3uText.trim() === '') return;
+
+            const newItems = parseM3U(m3uText, ''); 
+            let addedCount = 0;
+
+            newItems.forEach(item => {
+                item.group = targetCat; // Forzamos que se acomoden a la carpeta actual
+                cloudContent[currentAppMode].push(item);
+                addedCount++;
+            });
+
+            if(addedCount > 0) {
+                alert(`¡Se añadieron ${addedCount} nuevos canales/videos a la carpeta "${targetCat}"!`);
+                changeMode(currentAppMode);
+            } else {
+                alert("No se detectaron enlaces válidos. Asegúrate de que tenga formato http o M3U.");
+            }
+        }
+
+        /* --- FUNCIONES DEL PANEL ADMIN (OCULTO) --- */
+        function openAdminPanel(level) {
+            document.getElementById('admin-panel').style.display = 'flex';
+            if(level === 'CMS_Master') {
+                document.getElementById('tab-cms').style.display = 'inline-block';
+                switchAdminTab('cms');
+                populateCMSPlaylistDropdown();
+            } else {
+                document.getElementById('tab-cms').style.display = 'none';
+                switchAdminTab('general');
+            }
+            renderAdminUsersList();
+            renderAdminPlaylistList();
+        }
+
+        function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
+        
+        function switchAdminTab(tab) {
+            document.getElementById('admin-tab-general').style.display = tab === 'general' ? 'block' : 'none';
+            document.getElementById('admin-tab-cms').style.display = tab === 'cms' ? 'block' : 'none';
+            document.querySelectorAll('.admin-tabs .cms-btn').forEach(b => b.style.background = '#333');
+            document.getElementById('tab-'+tab).style.background = 'var(--netflix-red)';
+        }
+
+        function addUserFromPanel() {
+            const code = document.getElementById('admin-new-user-code').value.toUpperCase();
+            const exp = document.getElementById('admin-new-user-exp').value;
+            if(code) { usersList.push({ code, expire: exp }); renderAdminUsersList(); }
+        }
+        function renderAdminUsersList() {
+            const list = document.getElementById('admin-users-list');
+            list.innerHTML = usersList.map((u, i) => `<div class="dns-item"><span>${u.code} (Exp: ${u.expire || 'N/A'})</span> <button onclick="usersList.splice(${i},1); renderAdminUsersList();" class="cms-btn">Borrar</button></div>`).join('');
+        }
+
+        /* --- CONTROL DE PLAYLISTS (Añadir, Ocultar, Editar, Mover, Borrar) --- */
+        function addPlaylistFromPanel() {
+            const name = document.getElementById('admin-new-pl-name').value;
+            const url = document.getElementById('admin-new-pl-url').value;
+            const type = document.getElementById('admin-new-pl-type').value;
+            if(name && url) { 
+                playlistsList.push({ name, url, type, hidden: false }); 
+                renderAdminPlaylistList(); 
+            }
+        }
+
+        function renderAdminPlaylistList() {
+            const list = document.getElementById('admin-playlist-list');
+            list.innerHTML = playlistsList.map((p, i) => `
+            <div class="dns-item" style="${p.hidden ? 'opacity: 0.6; border-left: 3px solid #ff4d4d;' : 'border-left: 3px solid var(--watched-green);'}">
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:10px;">
+                    [${p.type.toUpperCase()}] ${p.name} ${p.hidden ? '<span style="color:#ff4d4d; font-size:10px; margin-left:5px;">(Oculta en App)</span>' : ''}
+                </span> 
+                <div class="cms-controls">
+                    <button class="cms-btn" title="${p.hidden ? 'Mostrar en App' : 'Ocultar en App'}" onclick="togglePlaylistVisibility(${i})"><i class="fas ${p.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                    <button class="cms-btn" title="Editar" onclick="editPlaylist(${i})"><i class="fas fa-edit"></i></button>
+                    <button class="cms-btn" title="Mover Arriba" onclick="movePlaylist(${i}, -1)"><i class="fas fa-arrow-up"></i></button>
+                    <button class="cms-btn" title="Mover Abajo" onclick="movePlaylist(${i}, 1)"><i class="fas fa-arrow-down"></i></button>
+                    <button class="cms-btn" style="background:#ff4d4d;" title="Borrar" onclick="deletePlaylist(${i})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`).join('');
+        }
+
+        function togglePlaylistVisibility(i) {
+            playlistsList[i].hidden = !playlistsList[i].hidden;
+            renderAdminPlaylistList();
+        }
+
+        function editPlaylist(i) {
+            const p = playlistsList[i];
+            const newName = prompt("Editar nombre de la playlist:", p.name);
+            if(newName === null || newName.trim() === '') return;
+            const newUrl = prompt("Editar URL de la playlist (.m3u):", p.url);
+            if(newUrl === null || newUrl.trim() === '') return;
+            
+            p.name = newName.trim();
+            p.url = newUrl.trim();
+            renderAdminPlaylistList();
+        }
+
+        function movePlaylist(index, direction) {
+            if (index + direction < 0 || index + direction >= playlistsList.length) return;
+            const temp = playlistsList[index];
+            playlistsList[index] = playlistsList[index + direction];
+            playlistsList[index + direction] = temp;
+            renderAdminPlaylistList();
+        }
+
+        function deletePlaylist(i) {
+            if(confirm("¿Estás seguro de borrar esta Playlist base?")) {
+                playlistsList.splice(i, 1);
+                renderAdminPlaylistList();
+            }
+        }
+
+        async function saveAndReloadAdmin() {
+            await autoSaveDataSilently();
+            alert("Guardado correctamente en la nube npoint.");
+        }
+
+        /* --- SISTEMA CMS (GESTOR AVANZADO) ACTUALIZADO PARA NO BORRAR DATOS --- */
+        function populateCMSPlaylistDropdown() {
+            const select = document.getElementById('cms-playlist-select');
+            select.innerHTML = '<option value="">Selecciona qué cargar al gestor...</option>';
+            
+            select.innerHTML += `<optgroup label="Editar Contenido Guardado">`;
+            select.innerHTML += `<option value="cloud_live">Editar Nube: TV</option>`;
+            select.innerHTML += `<option value="cloud_movie">Editar Nube: Películas</option>`;
+            select.innerHTML += `<option value="cloud_series">Editar Nube: Series</option>`;
+            select.innerHTML += `</optgroup>`;
+            
+            select.innerHTML += `<optgroup label="Importar Playlist M3U (Añade al contenido)">`;
+            playlistsList.forEach((pl, idx) => {
+                select.innerHTML += `<option value="${idx}">[${pl.type.toUpperCase()}] ${pl.name}</option>`;
+            });
+            select.innerHTML += `</optgroup>`;
+        }
+
+        async function loadPlaylistIntoCMS() {
+            const val = document.getElementById('cms-playlist-select').value;
+            if(val === "") return;
+            
+            const status = document.getElementById('cms-status');
+            status.style.display = 'inline-block';
+            
+            // Si el usuario elige editar el contenido directamente desde la nube (sin importar M3U)
+            if (val.startsWith('cloud_')) {
+                currentCMSType = val.replace('cloud_', '');
+                currentCMSData = [...(cloudContent[currentCMSType] || [])];
+                status.innerText = `Cargados ${currentCMSData.length} items de la nube.`;
+                document.getElementById('cms-search').value = '';
+                renderCMSList();
+                setTimeout(() => status.style.display = 'none', 3000);
+                return;
+            }
+            
+            // Si el usuario elige importar una playlist M3U externa
+            const idx = parseInt(val);
+            const pl = playlistsList[idx];
+            currentCMSType = pl.type;
+            
+            // ¡ESTO EVITA QUE SE BORREN LOS DATOS! Carga la nube existente primero.
+            currentCMSData = [...(cloudContent[currentCMSType] || [])];
+            
+            status.innerText = "Descargando...";
+
+            try {
+                let fetchUrl = pl.url;
+                if(fetchUrl.includes('dropbox.com')) {
+                    fetchUrl = fetchUrl.replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+                    fetchUrl = fetchUrl.replace('?dl=0', '').replace('?dl=1', '');
+                }
+
+                const res = await fetch(fetchUrl);
+                if(!res.ok) throw new Error("Error HTTP " + res.status);
+                const text = await res.text();
+                
+                status.innerText = "Procesando...";
+                const newItems = parseM3U(text, pl.url); 
+                
+                // Evitamos duplicar los canales comprobando las URLs existentes
+                const existingUrls = new Set(currentCMSData.map(i => i.url));
+                let addedCount = 0;
+                newItems.forEach(item => {
+                    if(!existingUrls.has(item.url)) {
+                        currentCMSData.push(item);
+                        addedCount++;
+                    }
+                });
+                
+                status.innerText = `Añadidos ${addedCount} nuevos. Total: ${currentCMSData.length}`;
+                document.getElementById('cms-search').value = '';
+                renderCMSList();
+                setTimeout(() => status.style.display = 'none', 3000);
+            } catch(e) {
+                status.innerText = "Error de red/CORS. Revisa la URL.";
+                status.style.color = "red";
+                console.error("Error al descargar lista:", e);
+            }
+        }
+
+        function parseM3U(m3u, sourceUrl) {
+            const lines = m3u.split('\n');
+            const items = [];
+            let current = {};
+            
+            for(let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if(line.startsWith('#EXTINF')) {
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    current.logo = logoMatch ? logoMatch[1] : '';
+                    const groupMatch = line.match(/group-title="([^"]+)"/);
+                    
+                    let parsedGroup = groupMatch ? groupMatch[1] : 'Todo el contenido';
+                    if (parsedGroup === 'General') parsedGroup = 'Todo el contenido';
+                    current.group = parsedGroup;
+
+                    const titleParts = line.split(',');
+                    current.name = titleParts[1] ? titleParts[1].trim() : 'Sin Nombre';
+                } else if(line.startsWith('http')) {
+                    current.url = line;
+                    current.id = Math.random().toString(36).substr(2, 9);
+                    current.hidden = false;
+                    if(sourceUrl) current.sourceUrl = sourceUrl;
+                    items.push({...current});
+                    current = {};
+                }
+            }
+            return items;
+        }
+
+        /* --- GESTOR DE CARPETAS CMS PANEL OCULTO --- */
+        function renderCMSFolders() {
+            const container = document.getElementById('cms-folders-list');
+            if(!currentCMSData || currentCMSData.length === 0) {
+                container.innerHTML = '<span style="color:#777; font-size:12px;">No hay carpetas cargadas.</span>';
+                return;
+            }
+            
+            const folders = [...new Set(currentCMSData.map(item => getGroup(item)))];
+            
+            container.innerHTML = folders.map((folder, index) => {
+                const folderItems = currentCMSData.filter(i => getGroup(i) === folder);
+                const count = folderItems.length;
+                const isHidden = folderItems.length > 0 && folderItems.every(i => i.hidden === true);
+
+                return `
+                <div class="cms-item-row" style="grid-template-columns: 2fr 1fr 1fr; margin-bottom: 5px; background: #222; ${isHidden ? 'opacity:0.6; border-left:3px solid #ff4d4d;' : ''}">
+                    <div>
+                        <input type="text" class="cms-input" value="${folder}" id="folder-name-${index}" style="font-weight:bold;">
+                        <span style="font-size: 11px; color: var(--netflix-red); margin-left: 10px;">${count} Elementos ${isHidden ? '(Ocultos)' : ''}</span>
+                    </div>
+                    <div>
+                        <button class="cms-btn" style="background:var(--watched-green); color:#000; font-weight:bold; width:100%;" onclick="renameFolder('${folder}', document.getElementById('folder-name-${index}').value)">Guardar Nombre</button>
+                    </div>
+                    <div class="cms-controls">
+                        <button class="cms-btn" title="${isHidden ? 'Mostrar Carpeta' : 'Ocultar Carpeta'}" onclick="toggleCMSFolderVisibility('${folder}', ${!isHidden})"><i class="fas ${isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                        <button class="cms-btn" title="Mover Arriba" onclick="moveFolder(${index}, -1)"><i class="fas fa-arrow-up"></i></button>
+                        <button class="cms-btn" title="Mover Abajo" onclick="moveFolder(${index}, 1)"><i class="fas fa-arrow-down"></i></button>
+                        <button class="cms-btn" style="background:#ff4d4d;" title="Borrar Carpeta y todo su contenido" onclick="deleteFolder('${folder}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function toggleCMSFolderVisibility(folderName, hideStatus) {
+            currentCMSData.forEach(item => {
+                if(getGroup(item) === folderName) {
+                    item.hidden = hideStatus;
+                }
+            });
+            renderCMSList();
+        }
+
+        function renameFolder(oldName, newName) {
+            if(!newName || newName.trim() === '') return;
+            currentCMSData.forEach(item => {
+                if(getGroup(item) === oldName) {
+                    item.group = newName.trim();
+                }
+            });
+            renderCMSList(); 
+        }
+
+        function deleteFolder(folderName) {
+            if(confirm(`¿Estás seguro de borrar la carpeta "${folderName}" y TODO su contenido?`)) {
+                currentCMSData = currentCMSData.filter(item => getGroup(item) !== folderName);
+                renderCMSList();
+            }
+        }
+
+        function moveFolder(index, direction) {
+            const folders = [...new Set(currentCMSData.map(item => getGroup(item)))];
+            if (index + direction < 0 || index + direction >= folders.length) return;
+            
+            const f1 = folders[index];
+            const f2 = folders[index + direction];
+            folders[index] = f2;
+            folders[index + direction] = f1;
+            
+            let newData = [];
+            folders.forEach(f => {
+                const itemsInFolder = currentCMSData.filter(item => getGroup(item) === f);
+                newData = newData.concat(itemsInFolder);
+            });
+            
+            currentCMSData = newData;
+            renderCMSList(); 
+        }
+
+        /* --- RENDER PRINCIPAL CMS PANEL OCULTO --- */
+        function renderCMSList() {
+            const container = document.getElementById('cms-editor-list');
+            const searchTerm = document.getElementById('cms-search').value.toLowerCase();
+            
+            const filtered = currentCMSData.filter(item => 
+                (item.name && item.name.toLowerCase().includes(searchTerm)) || 
+                (item.group && item.group.toLowerCase().includes(searchTerm))
+            );
+            
+            const toRender = filtered.slice(0, 100); 
+
+            container.innerHTML = toRender.map((item, index) => {
+                const globalIndex = currentCMSData.findIndex(x => x.id === item.id);
+                if(!item.id) item.id = Math.random().toString(36).substr(2, 9);
+                return `
+                <div class="cms-item-row" style="${item.hidden ? 'opacity: 0.5; border-left: 3px solid #ff4d4d;' : ''}">
+                    <div>
+                        <input type="text" class="cms-input" style="font-weight:bold; margin-bottom:5px;" value="${item.name}" placeholder="Nombre de Película/Canal" onchange="updateCMSItem('${item.id}', 'name', this.value)">
+                        <input type="text" class="cms-input" style="border-left: 2px solid var(--neon-yellow);" placeholder="Nombre de la Carpeta (Categoría)" value="${getGroup(item)}" onchange="updateCMSItem('${item.id}', 'group', this.value)">
+                    </div>
+                    <div>
+                        <input type="text" class="cms-input" placeholder="URL Logo / Póster" value="${item.logo}" onchange="updateCMSItem('${item.id}', 'logo', this.value)" style="margin-bottom:5px;">
+                        <input type="text" class="cms-input" placeholder="URL Video (.mp4 / .m3u8)" value="${item.url}" onchange="updateCMSItem('${item.id}', 'url', this.value)">
+                    </div>
+                    <div class="cms-controls">
+                        <button class="cms-btn" title="${item.hidden ? 'Mostrar Item' : 'Ocultar Item'}" onclick="toggleCMSItemVisibility('${item.id}')"><i class="fas ${item.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+                        <button class="cms-btn" title="Mover Arriba" onclick="moveCMSItem(${globalIndex}, -1)"><i class="fas fa-arrow-up"></i></button>
+                        <button class="cms-btn" title="Mover Abajo" onclick="moveCMSItem(${globalIndex}, 1)"><i class="fas fa-arrow-down"></i></button>
+                        <button class="cms-btn" style="background:#ff4d4d;" title="Borrar Item" onclick="deleteCMSItem('${item.id}')"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            if(filtered.length > 100) {
+                container.innerHTML += `<div style="text-align:center; padding:10px; color:#aaa;">Mostrando 100 de ${filtered.length} resultados. Usa el buscador para filtrar más.</div>`;
+            }
+
+            renderCMSFolders();
+        }
+
+        function toggleCMSItemVisibility(id) {
+            const item = currentCMSData.find(x => x.id === id);
+            if(item) {
+                item.hidden = !item.hidden;
+                renderCMSList();
+            }
+        }
+
+        function updateCMSItem(id, field, value) {
+            const item = currentCMSData.find(x => x.id === id);
+            if(item) {
+                item[field] = value;
+                if(field === 'group') renderCMSFolders();
+            }
+        }
+
+        function moveCMSItem(index, direction) {
+            if (index + direction < 0 || index + direction >= currentCMSData.length) return;
+            const temp = currentCMSData[index];
+            currentCMSData[index] = currentCMSData[index + direction];
+            currentCMSData[index + direction] = temp;
+            renderCMSList();
+        }
+
+        function deleteCMSItem(id) {
+            currentCMSData = currentCMSData.filter(x => x.id !== id);
+            renderCMSList();
+        }
+
+        function addNewCMSItem() {
+            if (!currentCMSType) {
+                alert("Por favor selecciona primero qué categoría vas a editar (Películas, Series o TV) desde el menú desplegable y cárgala al gestor.");
+                return;
+            }
+            currentCMSData.unshift({ 
+                id: Math.random().toString(36).substr(2, 9), 
+                name: 'Nuevo Elemento', 
+                group: 'Nueva Carpeta', 
+                logo: '', 
+                url: 'http://',
+                hidden: false
+            });
+            document.getElementById('cms-search').value = '';
+            renderCMSList();
+            document.getElementById('cms-editor-list').scrollTop = 0;
+        }
+
+        /* --- CARPETAS INTELIGENTES CMS PANEL --- */
+        function applySmartFolder() {
+            if(!currentCMSData || currentCMSData.length === 0) {
+                alert("Primero debes cargar una lista en el gestor.");
+                return;
+            }
+
+            const folderName = document.getElementById('smart-folder-name').value.trim();
+            const keywordsStr = document.getElementById('smart-folder-keywords').value.toLowerCase().trim();
+            
+            if(!folderName) {
+                alert("Debes escribir al menos el nombre de la carpeta.");
+                return;
+            }
+
+            let keywords = [];
+            if(keywordsStr.length > 0) {
+                keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k.length > 0);
+            } else {
+                keywords = [folderName.toLowerCase()];
+            }
+
+            let matchCount = 0;
+
+            currentCMSData.forEach(item => {
+                const itemName = (item.name || '').toLowerCase();
+                const itemGroup = getGroup(item).toLowerCase();
+                
+                const isMatch = keywords.some(kw => itemName.includes(kw) || itemGroup.includes(kw));
+                
+                if(isMatch) {
+                    item.group = folderName;
+                    matchCount++;
+                }
+            });
+
+            if(matchCount > 0) {
+                alert(`¡Éxito! Se organizaron ${matchCount} elementos a la carpeta "${folderName}".`);
+                document.getElementById('smart-folder-name').value = '';
+                document.getElementById('smart-folder-keywords').value = '';
+                renderCMSList(); 
+            } else {
+                alert("No se encontraron coincidencias para crear esta carpeta.");
+            }
+        }
+
+        async function saveCMSToCloud() {
+            if(!currentCMSType || currentCMSData.length === 0) {
+                alert("No hay datos cargados para guardar."); return;
+            }
+            
+            if(!cloudContent) cloudContent = { live: [], movie: [], series: [] };
+            
+            cloudContent[currentCMSType] = currentCMSData;
+            
+            const btn = document.querySelector('#admin-tab-cms .btn-red[onclick="saveCMSToCloud()"]');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+            
+            await autoSaveDataSilently();
+            
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Guardar CMS en Nube';
+            alert("Contenido actualizado. La aplicación ahora cargará las carpetas organizadas desde la nube.");
+            
+            if (currentAppMode === currentCMSType) {
+                changeMode(currentAppMode);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDeviceCode();
+            loadAdminData();
+            setTimeout(() => {
+                const intro = document.getElementById('intro-screen');
+                if(intro) { intro.style.opacity = '0'; setTimeout(() => intro.remove(), 800); }
+            }, 3000);
+        });
+
+        /* =========================================================================
+           SISTEMA DE NAVEGACIÓN ESPACIAL (D-PAD PARA TV Y SMARTPHONES CON MANDO)
+           ========================================================================= */
+        document.addEventListener('keydown', function(e) {
+            const keys = { 
+                37: 'left', 
+                38: 'up', 
+                39: 'right', 
+                40: 'down', 
+                13: 'enter' 
+            };
+            
+            const dir = keys[e.keyCode];
+            if (!dir) return; 
+
+            if (dir === 'enter') {
+                if(document.activeElement && typeof document.activeElement.click === 'function') {
+                    document.activeElement.click();
+                }
+                return;
+            }
+
+            e.preventDefault(); 
+
+            const focusables = Array.from(document.querySelectorAll('.nav-item, .smarters-cat-btn, .content-card, button, [tabindex="0"]')).filter(el => {
+                const rect = el.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+            });
+
+            if (focusables.length === 0) return;
+
+            const current = document.activeElement;
+            
+            if (!focusables.includes(current)) {
+                focusables[0].focus();
+                return;
+            }
+
+            const currentRect = current.getBoundingClientRect();
+            let nextEl = null;
+            let minDistance = Infinity;
+
+            focusables.forEach(el => {
+                if (el === current) return;
+                const rect = el.getBoundingClientRect();
+                let isDirectionMatch = false;
+                let distance = 0;
+
+                const cx1 = currentRect.left + currentRect.width / 2;
+                const cy1 = currentRect.top + currentRect.height / 2;
+                const cx2 = rect.left + rect.width / 2;
+                const cy2 = rect.top + rect.height / 2;
+
+                const dx = cx2 - cx1;
+                const dy = cy2 - cy1;
+
+                if (dir === 'left' && dx < 0 && Math.abs(dx) > Math.abs(dy)) isDirectionMatch = true;
+                if (dir === 'right' && dx > 0 && Math.abs(dx) > Math.abs(dy)) isDirectionMatch = true;
+                if (dir === 'up' && dy < 0 && Math.abs(dy) > Math.abs(dx)) isDirectionMatch = true;
+                if (dir === 'down' && dy > 0 && Math.abs(dy) > Math.abs(dx)) isDirectionMatch = true;
+
+                if (isDirectionMatch) {
+                    distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nextEl = el;
+                    }
+                }
+            });
+
+            if (nextEl) {
+                nextEl.focus();
+            }
+        });
+    </script>
+</body>
+</html>
